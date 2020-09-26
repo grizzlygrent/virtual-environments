@@ -3,9 +3,8 @@ function Get-OSName {
 }
 
 function Get-OSVersion {
-    $systemInfo = Get-CimInstance -ClassName Win32_OperatingSystem
-    $OSVersion = $systemInfo.Version
-    $OSBuild = $systemInfo.BuildNumber
+    $OSVersion = (Get-CimInstance -ClassName Win32_OperatingSystem).Version
+    $OSBuild = (Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion' UBR).UBR
     return "OS Version: $OSVersion Build $OSBuild"
 }
 
@@ -35,7 +34,23 @@ function Get-JavaVersionsList {
 
 function Get-RustVersion {
     $rustVersion = [regex]::matches($(rustc --version), "\d+\.\d+\.\d+").Value
-    return "Rust ${rustVersion}"
+    return $rustVersion
+}
+
+function Get-BindgenVersion {
+    return bindgen --version
+}
+
+function Get-CbindgenVersion {
+    return cbindgen --version
+}
+
+function Get-CargoAuditVersion {
+    return cargo audit --version
+}
+
+function Get-CargoOutdatedVersion {
+    return cargo outdated --version
 }
 
 function Get-PythonVersion {
@@ -127,6 +142,10 @@ function Get-ComposerVersion {
     return "Composer $composerVersion"
 }
 
+function Get-NugetVersion {
+    (nuget help) -match "NuGet Version" -replace "Version: "
+}
+
 function Get-AntVersion {
     ($(ant -version) | Out-String) -match "version (?<version>\d+\.\d+\.\d+)" | Out-Null
     $antVersion = $Matches.Version
@@ -143,6 +162,11 @@ function Get-GradleVersion {
     ($(gradle -version) | Out-String) -match "Gradle (?<version>\d+\.\d+)" | Out-Null
     $gradleVersion = $Matches.Version
     return "Gradle $gradleVersion"
+}
+
+function Get-SbtVersion {
+    $sbtVersion = (sbt -version) -match "sbt script version:" -replace "script version: "
+    return "$sbtVersion"
 }
 
 function Get-DotnetSdks {
@@ -219,6 +243,21 @@ function Get-PowerShellAzureModules {
     }
 }
 
+function Get-PowerShellModules {
+    $modules = (Get-ToolsetContent).powershellModules.name
+
+    $psModules = Get-Module -Name $modules -ListAvailable | Sort-Object Name | Group-Object Name
+    $psModules | ForEach-Object {
+        $moduleName = $_.Name
+        $moduleVersions = ($_.group.Version | Sort-Object -Unique) -join '<br>'
+
+        [PSCustomObject]@{
+            Module = $moduleName
+            Version = $moduleVersions
+        }
+    }
+}
+
 function Get-CachedDockerImages {
     return (docker images --digests --format "* {{.Repository}}:{{.Tag}}").Split("*") | Where-Object { $_ }
 }
@@ -230,4 +269,8 @@ function Get-PacmanVersion {
     $rawVersion.Split([System.Environment]::NewLine)[1] -match "\d+\.\d+(\.\d+)?" | Out-Null
     $pacmanVersion = $matches[0]
     return "- Pacman $pacmanVersion"
+}
+
+function Get-YAMLLintVersion {
+    yamllint --version
 }

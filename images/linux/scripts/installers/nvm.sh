@@ -4,8 +4,6 @@
 ##  Desc:  Installs Nvm
 ################################################################################
 
-# Source the helpers for use with the script
-source $HELPER_SCRIPTS/document.sh
 
 export NVM_DIR="/etc/skel/.nvm"
 mkdir $NVM_DIR
@@ -19,4 +17,5 @@ if ! command -v nvm; then
     exit 1
 fi
 
-DocumentInstalledItem "nvm ($(nvm --version))"
+# set system node.js as default one
+nvm alias default system

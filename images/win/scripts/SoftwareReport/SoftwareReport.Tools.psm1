@@ -18,10 +18,24 @@ function Get-BazeliskVersion {
     return "Bazelisk $bazeliskVersion"
 }
 
+function Get-RVersion {
+    ($(cmd /c "Rscript --version 2>&1")  | Out-String) -match  "R scripting front-end version (?<version>\d+\.\d+\.\d+)" | Out-Null
+    $rVersion = $Matches.Version
+    return "R $rVersion"
+}
+
 function Get-CMakeVersion {
     ($(cmake -version) | Out-String) -match  "cmake version (?<version>\d+\.\d+\.\d+)" | Out-Null
     $cmakeVersion = $Matches.Version
     return "CMake $cmakeVersion"
+}
+
+function Get-CodeQLBundleVersion {
+    $CodeQLVersionsWildcard = Join-Path $Env:AGENT_TOOLSDIRECTORY -ChildPath "codeql" | Join-Path -ChildPath "*"
+    $CodeQLVersionPath = Get-ChildItem $CodeQLVersionsWildcard | Select-Object -First 1 -Expand FullName
+    $CodeQLPath = Join-Path $CodeQLVersionPath -ChildPath "x64" | Join-Path -ChildPath "codeql" | Join-Path -ChildPath "codeql.exe"
+    $CodeQLVersion = $($CodeQLPath version --quiet)
+    return "CodeQL Action Bundle $CodeQLVersion"
 }
 
 function Get-DockerVersion {
@@ -87,8 +101,7 @@ function Get-MercurialVersion {
 }
 
 function Get-NSISVersion {
-    $(choco list --local-only nsis | Out-String) -match "nsis (?<version>\d+\.\d+\.?\d*\.?\d*)" | Out-Null
-    $nsisVersion = $Matches.Version
+    $nsisVersion =  &"c:\Program Files (x86)\NSIS\makensis.exe" "/Version"
     return "NSIS $nsisVersion"
 }
 
@@ -100,6 +113,10 @@ function Get-OpenSSLVersion {
 
 function Get-PackerVersion {
     return "Packer $(packer --version)"
+}
+
+function Get-PulumiVersion {
+    return "Pulumi $(pulumi version)"
 }
 
 function Get-SQLPSVersion {
@@ -141,8 +158,12 @@ function Get-AzureCLIVersion {
     return "Azure CLI $azureCLIVersion"
 }
 
+function Get-AzCopyVersion {
+    return ($(azcopy --version) -replace "version ")
+}
+
 function Get-AzureDevopsExtVersion {
-    $azureDevExtVersion = (az version | ConvertFrom-Json | Foreach{ $_."extensions" })."azure-devops"
+    $azureDevExtVersion = (az version | ConvertFrom-Json | ForEach-Object { $_."extensions" })."azure-devops"
     return "Azure DevOps CLI extension $azureDevExtVersion"
 }
 
@@ -158,10 +179,14 @@ function Get-AWSSAMVersion {
     return "AWS SAM CLI $awssamVersion"
 }
 
+function Get-AWSSessionManagerVersion {
+    $awsSessionManagerVersion = $(session-manager-plugin --version)
+    return "AWS Session Manager CLI $awsSessionManagerVersion"
+}
+
 function Get-AlibabaCLIVersion {
-    $(aliyun --version | Select-String "Alibaba Cloud Command Line Interface") -match "(?<version>\d+\.\d+\.\d+)" | Out-Null
-    $alicliVersion = $Matches.Version
-    return "Alibaba CLI $alicliVersion"
+    $alicliVersion = $(aliyun version)
+    return "Alibaba Cloud CLI $alicliVersion"
 }
 
 function Get-CloudFoundryVersion {
@@ -198,4 +223,40 @@ function Get-StackVersion {
     ((stack --version --quiet) | Out-String) -match "Version (?<version>\d+\.\d+\.\d+)," | Out-Null
     $stackVersion = $Matches.Version
     return "Stack $stackVersion"
+}
+
+function Get-GoogleCloudSDKVersion {
+    (gcloud --version) -match "Google Cloud SDK"
+}
+
+function Get-NewmanVersion {
+    return "Newman $(newman --version)"
+}
+
+function Get-GHVersion {
+    ($(gh --version) | Select-String -Pattern "gh version") -match "gh version (?<version>\d+\.\d+\.\d+)" | Out-Null
+    $ghVersion = $Matches.Version
+    return "GitHub CLI $ghVersion"
+}
+
+function Get-VisualCPPComponents {
+    $vcpp = Get-CimInstance -ClassName Win32_Product -Filter "Name LIKE 'Microsoft Visual C++%'"
+    $vcpp | Sort-Object Name, Version | ForEach-Object {
+        $isMatch = $_.Name -match "^(?<Name>Microsoft Visual C\+\+ \d{4})\s+(?<Arch>\w{3})\s+(?<Ext>.+)\s+-"
+        if ($isMatch) {
+            $name = '{0} {1}' -f $matches["Name"], $matches["Ext"]
+            $arch = $matches["Arch"].ToLower()
+            $version = $_.Version
+            [PSCustomObject]@{
+                Name = $name
+                Architecture = $arch
+                Version = $version
+            }
+        }
+    }
+}
+
+function Get-AZDSVersion {
+    $azdsVersion = $(azds --version) | Select-String "(\d+\.\d+\.\d+.\d+)"
+    return "Azure Dev Spaces CLI $azdsVersion"
 }

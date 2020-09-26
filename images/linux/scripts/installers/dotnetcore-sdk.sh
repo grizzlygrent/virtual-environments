@@ -3,9 +3,9 @@
 ##  File:  dotnetcore-sdk.sh
 ##  Desc:  Installs .NET Core SDK
 ################################################################################
+
 source $HELPER_SCRIPTS/etc-environment.sh
-source $HELPER_SCRIPTS/apt.sh
-source $HELPER_SCRIPTS/document.sh
+source $HELPER_SCRIPTS/install.sh
 source $HELPER_SCRIPTS/os.sh
 
 # Ubuntu 20 doesn't support EOL versions
@@ -16,7 +16,7 @@ fi
 
 if isUbuntu16 || isUbuntu18 ; then
     LATEST_DOTNET_PACKAGES=("dotnet-sdk-3.0" "dotnet-sdk-3.1")
-    release_urls=("https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/2.1/releases.json" "https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/2.2/releases.json" "https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/3.0/releases.json" "https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/3.1/releases.json")
+    release_urls=("https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/2.1/releases.json" "https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/3.0/releases.json" "https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/3.1/releases.json")
 fi
 
 mksamples()
@@ -43,7 +43,7 @@ export DOTNET_CLI_TELEMETRY_OPTOUT=1
 
 for latest_package in ${LATEST_DOTNET_PACKAGES[@]}; do
     echo "Determing if .NET Core ($latest_package) is installed"
-    if ! IsInstalled $latest_package; then
+    if ! IsPackageInstalled $latest_package; then
         echo "Could not find .NET Core ($latest_package), installing..."
         apt-get install $latest_package -y
     else
@@ -83,7 +83,6 @@ for tarball in *.tar.gz; do
 done
 rm urls
 
-DocumentInstalledItem ".NET Core SDK:"
 # Smoke test each SDK
 for sdk in $sortedSdks; do
     mksamples "$sdk" "console"
@@ -92,12 +91,12 @@ for sdk in $sortedSdks; do
     mksamples "$sdk" "web"
     mksamples "$sdk" "mvc"
     mksamples "$sdk" "webapi"
-    DocumentInstalledItemIndent "$sdk"
 done
 
 # NuGetFallbackFolder at /usr/share/dotnet/sdk/NuGetFallbackFolder is warmed up by smoke test
 # Additional FTE will just copy to ~/.dotnet/NuGet which provides no benefit on a fungible machine
 setEtcEnvironmentVariable DOTNET_SKIP_FIRST_TIME_EXPERIENCE 1
 setEtcEnvironmentVariable DOTNET_NOLOGO 1
+setEtcEnvironmentVariable DOTNET_MULTILEVEL_LOOKUP 0
 prependEtcEnvironmentPath /home/runner/.dotnet/tools
 echo 'export PATH="$PATH:$HOME/.dotnet/tools"' | tee -a /etc/skel/.bashrc

@@ -3,15 +3,21 @@
 ##  File:  docker-moby.sh
 ##  Desc:  Installs docker onto the image
 ################################################################################
+set -e
 
-source $HELPER_SCRIPTS/apt.sh
-source $HELPER_SCRIPTS/document.sh
+# Source the helpers for use with the script
+source $HELPER_SCRIPTS/install.sh
+source $HELPER_SCRIPTS/os.sh
 
+# There is no stable docker-moby for Ubuntu 20 at the moment
+if isUbuntu20 ; then
+    add-apt-repository "deb [arch=amd64,armhf,arm64] https://packages.microsoft.com/ubuntu/20.04/prod testing main"
+fi
+
+# Check to see if docker is already installed
 docker_package=moby
-
-## Check to see if docker is already installed
 echo "Determing if Docker ($docker_package) is installed"
-if ! IsInstalled $docker_package; then
+if ! IsPackageInstalled $docker_package; then
     echo "Docker ($docker_package) was not found. Installing..."
     apt-get remove -y moby-engine moby-cli
     apt-get update
@@ -20,6 +26,10 @@ if ! IsInstalled $docker_package; then
 else
     echo "Docker ($docker_package) is already installed"
 fi
+
+# Enable docker.service
+systemctl is-active --quiet docker.service || systemctl start docker.service
+systemctl is-enabled --quiet docker.service || systemctl enable docker.service
 
 # Run tests to determine that the software installed as expected
 echo "Testing to make sure that script performed as expected, and basic scenarios work"
@@ -34,29 +44,12 @@ else
     echo "Docker-moby and Docker-buildx checking the successfull"
     # Docker daemon takes time to come up after installing
     sleep 10
-    set -e
     docker info
-    set +e
 fi
 
-docker pull node:10
-docker pull node:12
-docker pull buildpack-deps:stretch
-docker pull node:10-alpine
-docker pull node:12-alpine
-docker pull debian:8
-docker pull debian:9
-docker pull alpine:3.7
-docker pull alpine:3.8
-docker pull alpine:3.9
-docker pull alpine:3.10
-docker pull ubuntu:14.04
-
-## Add version information to the metadata file
-echo "Documenting Docker version"
-docker_version=$(docker -v)
-DocumentInstalledItem "Docker-Moby ($docker_version)"
-
-echo "Documenting Docker-buildx version"
-DOCKER_BUILDX_VERSION=$(docker buildx version | cut -d ' ' -f2)
-DocumentInstalledItem "Docker-Buildx ($DOCKER_BUILDX_VERSION)"
+# Pull images
+toolset="$INSTALLER_SCRIPT_FOLDER/toolset.json"
+images=$(jq -r '.docker.images[]' $toolset)
+for image in $images; do
+    docker pull "$image"
+done
